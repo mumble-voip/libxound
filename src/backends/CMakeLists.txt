@@ -3,6 +3,8 @@
 # that can be found in the LICENSE file at the root of the
 # Mumble source tree or at <https://www.mumble.info/LICENSE>.
 
+add_definitions("-DBACKENDS_DIR=\"${BACKENDS_DIR}\"")
+
 if(UNIX)
 	if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 		add_subdirectory(ALSA)

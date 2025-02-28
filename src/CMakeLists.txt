@@ -38,6 +38,8 @@ target_sources(crossaudio
 		"Engine.h"
 		"Flux.c"
 		"Flux.h"
+		"Log.c"
+		"Log.h"
 		"Node.c"
 		"Node.h"
 	PUBLIC
@@ -48,6 +50,7 @@ target_sources(crossaudio
 		"${INCLUDE_DIR}/crossaudio/Engine.h"
 		"${INCLUDE_DIR}/crossaudio/ErrorCode.h"
 		"${INCLUDE_DIR}/crossaudio/Flux.h"
+		"${INCLUDE_DIR}/crossaudio/Log.h"
 		"${INCLUDE_DIR}/crossaudio/Macros.h"
 		"${INCLUDE_DIR}/crossaudio/Node.h"
 )

@@ -8,6 +8,7 @@
 
 #include "crossaudio/Engine.h"
 #include "crossaudio/Flux.h"
+#include "crossaudio/Log.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -30,7 +31,13 @@ typedef struct CrossAudio_FluxConfig FluxConfig;
 typedef struct CrossAudio_FluxFeedback FluxFeedback;
 
 static inline bool initBackend() {
-	const ErrorCode ec = CrossAudio_backendInit(BACKEND);
+	ErrorCode ec = CrossAudio_logInit(stdout);
+	if (ec != CROSSAUDIO_EC_OK) {
+		printf("CrossAudio_logInit() failed with error \"%s\"!\n", CrossAudio_ErrorCodeText(ec));
+		return false;
+	}
+
+	ec = CrossAudio_backendInit(BACKEND);
 	if (ec != CROSSAUDIO_EC_OK) {
 		printf("CrossAudio_backendInit() failed with error \"%s\"!\n", CrossAudio_ErrorCodeText(ec));
 		return false;

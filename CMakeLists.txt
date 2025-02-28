@@ -37,6 +37,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 set(3RDPARTY_DIR "${PROJECT_SOURCE_DIR}/3rdparty")
 set(INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
 set(SRC_DIR "${PROJECT_SOURCE_DIR}/src")
+set(BACKENDS_DIR "${SRC_DIR}/backends")
 
 if(WIN32)
 	add_definitions(
