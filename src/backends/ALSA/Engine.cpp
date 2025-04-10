@@ -5,6 +5,8 @@
 
 #include "Engine.hpp"
 
+#include "ErrorCheck.hpp"
+
 #include "Node.h"
 
 #include "crossaudio/Direction.h"
@@ -50,7 +52,7 @@ ErrorCode Engine::nameSet(const char *name) {
 
 Nodes *Engine::engineNodesGet() {
 	void **hints;
-	if (snd_device_name_hint(-1, "pcm", &hints) < 0) {
+	if (!OK(snd_device_name_hint, -1, "pcm", &hints)) {
 		return nullptr;
 	}
 

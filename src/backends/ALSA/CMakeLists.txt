@@ -18,6 +18,7 @@ target_compile_definitions(be_alsa
 
 target_include_directories(be_alsa
 	PRIVATE
+		${BACKENDS_DIR}
 		${SRC_DIR}
 		${INCLUDE_DIR}
 )
@@ -29,6 +30,8 @@ target_sources(be_alsa
 
 		"Engine.cpp"
 		"Engine.hpp"
+
+		"ErrorCheck.hpp"
 
 		"Flux.cpp"
 		"Flux.hpp"

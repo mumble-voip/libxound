@@ -6,6 +6,7 @@
 #include "ALSA.hpp"
 
 #include "Engine.hpp"
+#include "ErrorCheck.hpp"
 #include "Flux.hpp"
 
 #include "Backend.h"
@@ -33,7 +34,7 @@ static const char *version() {
 }
 
 static ErrorCode init() {
-	if (snd_config_update() < 0) {
+	if (!OK(snd_config_update)) {
 		return CROSSAUDIO_EC_GENERIC;
 	}
 
@@ -41,7 +42,7 @@ static ErrorCode init() {
 }
 
 static ErrorCode deinit() {
-	if (snd_config_update_free_global() < 0) {
+	if (!OK(snd_config_update_free_global)) {
 		return CROSSAUDIO_EC_GENERIC;
 	}
 

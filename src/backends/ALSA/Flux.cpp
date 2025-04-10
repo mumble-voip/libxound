@@ -5,6 +5,10 @@
 
 #include "Flux.hpp"
 
+#include "ErrorCheck.hpp"
+
+#include "Log.hpp"
+
 #include <algorithm>
 #include <bit>
 #include <cerrno>
@@ -14,12 +18,6 @@
 #include <vector>
 
 #include <alsa/asoundlib.h>
-
-#define ALSA_ERRBAIL(x) \
-	if (x < 0) {        \
-		stop();         \
-		return false;   \
-	}
 
 using namespace alsa;
 
@@ -64,7 +62,7 @@ ErrorCode Flux::start(FluxConfig &config, const FluxFeedback &feedback) {
 		nodeID = DEFAULT_NODE;
 	}
 
-	if (snd_pcm_open(&m_handle, nodeID, dir, SND_PCM_NONBLOCK) < 0) {
+	if (!OK(snd_pcm_open, &m_handle, nodeID, dir, SND_PCM_NONBLOCK)) {
 		return CROSSAUDIO_EC_GENERIC;
 	}
 
@@ -73,7 +71,7 @@ ErrorCode Flux::start(FluxConfig &config, const FluxFeedback &feedback) {
 		return CROSSAUDIO_EC_GENERIC;
 	}
 
-	if (snd_pcm_prepare(m_handle) < 0 || snd_pcm_start(m_handle) < 0) {
+	if (!OK(snd_pcm_prepare, m_handle) || !OK(snd_pcm_start, m_handle)) {
 		stop();
 		return CROSSAUDIO_EC_GENERIC;
 	}
@@ -99,7 +97,10 @@ ErrorCode Flux::stop() {
 		m_thread.reset();
 	}
 
-	snd_pcm_close(m_handle);
+	if (!OK(snd_pcm_close, m_handle)) {
+		return CROSSAUDIO_EC_GENERIC;
+	}
+
 	m_handle = nullptr;
 
 	return CROSSAUDIO_EC_OK;
@@ -110,13 +111,15 @@ ErrorCode Flux::pause(const bool on) {
 		return CROSSAUDIO_EC_INIT;
 	}
 
+	if (!OK(snd_pcm_pause, m_handle, on)) {
+		return CROSSAUDIO_EC_GENERIC;
+	}
+
 	// For capture streams snd_pcm_wait() returns immediately when paused (possible ALSA bug?).
 	// Our solution is to use std::atomic_flag as an interlock mechanism.
 	if (on) {
-		snd_pcm_pause(m_handle, 1);
 		m_pause.test_and_set();
 	} else {
-		snd_pcm_pause(m_handle, 0);
 		m_pause.clear();
 	}
 
@@ -167,7 +170,7 @@ void Flux::processInput() {
 		}
 	}
 
-	snd_pcm_drop(m_handle);
+	OK(snd_pcm_drop, m_handle);
 }
 
 void Flux::processOutput() {
@@ -202,7 +205,7 @@ void Flux::processOutput() {
 		}
 	}
 
-	snd_pcm_drain(m_handle);
+	OK(snd_pcm_drain, m_handle);
 }
 
 bool Flux::setParams(FluxConfig &config) {
@@ -212,22 +215,26 @@ bool Flux::setParams(FluxConfig &config) {
 
 	snd_pcm_hw_params_t *hwParams;
 	snd_pcm_hw_params_alloca(&hwParams);
-	ALSA_ERRBAIL(snd_pcm_hw_params_any(m_handle, hwParams))
-	ALSA_ERRBAIL(snd_pcm_hw_params_set_access(m_handle, hwParams, SND_PCM_ACCESS_RW_INTERLEAVED))
-	ALSA_ERRBAIL(snd_pcm_hw_params_set_format(m_handle, hwParams, translateFormat(config.bitFormat, config.sampleBits)))
-	ALSA_ERRBAIL(snd_pcm_hw_params_set_rate(m_handle, hwParams, config.sampleRate, 0))
-	ALSA_ERRBAIL(snd_pcm_hw_params_set_channels(m_handle, hwParams, config.channels))
-	ALSA_ERRBAIL(snd_pcm_hw_params_set_period_size_near(m_handle, hwParams, &quantum, &dir))
-	ALSA_ERRBAIL(snd_pcm_hw_params_set_periods_near(m_handle, hwParams, &periods, &dir))
-	ALSA_ERRBAIL(snd_pcm_hw_params(m_handle, hwParams))
+	if (!(OK(snd_pcm_hw_params_any, m_handle, hwParams)
+		  && OK(snd_pcm_hw_params_set_access, m_handle, hwParams, SND_PCM_ACCESS_RW_INTERLEAVED)
+		  && OK(snd_pcm_hw_params_set_format, m_handle, hwParams, translateFormat(config.bitFormat, config.sampleBits))
+		  && OK(snd_pcm_hw_params_set_rate, m_handle, hwParams, config.sampleRate, 0)
+		  && OK(snd_pcm_hw_params_set_channels, m_handle, hwParams, config.channels)
+		  && OK(snd_pcm_hw_params_set_period_size_near, m_handle, hwParams, &quantum, &dir)
+		  && OK(snd_pcm_hw_params_set_periods_near, m_handle, hwParams, &periods, &dir)
+		  && OK(snd_pcm_hw_params, m_handle, hwParams))) {
+		return false;
+	}
 
 	snd_pcm_sw_params_t *swParams;
 	snd_pcm_sw_params_alloca(&swParams);
-	ALSA_ERRBAIL(snd_pcm_sw_params_current(m_handle, swParams))
-	ALSA_ERRBAIL(snd_pcm_sw_params_set_avail_min(m_handle, swParams, quantum));
-	ALSA_ERRBAIL(snd_pcm_sw_params_set_start_threshold(m_handle, swParams, quantum * (periods - 1)));
-	ALSA_ERRBAIL(snd_pcm_sw_params_set_stop_threshold(m_handle, swParams, quantum * periods));
-	ALSA_ERRBAIL(snd_pcm_sw_params(m_handle, swParams))
+	if (!(OK(snd_pcm_sw_params_current, m_handle, swParams)
+		  && OK(snd_pcm_sw_params_set_avail_min, m_handle, swParams, quantum)
+		  && OK(snd_pcm_sw_params_set_start_threshold, m_handle, swParams, quantum * (periods - 1))
+		  && OK(snd_pcm_sw_params_set_stop_threshold, m_handle, swParams, quantum * periods)
+		  && OK(snd_pcm_sw_params, m_handle, swParams))) {
+		return false;
+	}
 
 	m_quantum = static_cast< uint32_t >(quantum);
 
@@ -243,8 +250,14 @@ constexpr bool Flux::handleError(const long error) {
 		case -EINTR:
 		case -EPIPE:
 		case -ESTRPIPE:
-			return snd_pcm_recover(m_handle, error, 1) >= 0 ? true : false;
+			if (OK(snd_pcm_recover, m_handle, error, 1)) {
+				return true;
+			} else {
+				DEBUG("Failed to recover from {}!", error);
+				return false;
+			}
 		default:
+			DEBUG("Can't handle error {}!", error);
 			return false;
 	}
 }
