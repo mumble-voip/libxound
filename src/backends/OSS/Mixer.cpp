@@ -5,22 +5,23 @@
 
 #include "Mixer.hpp"
 
-#include <fcntl.h>
-#include <unistd.h>
+#include "ErrorCheck.hpp"
 
+#include <fcntl.h>
+
+#include <sys/ioctl.h>
 #include <sys/soundcard.h>
 
 using namespace oss;
 
 bool Mixer::open() {
-	m_handle = ::open("/dev/mixer", O_RDONLY, 0);
-	return static_cast< bool >(*this);
+	return FileDescriptor::open("/dev/mixer", O_RDONLY);
 }
 
 bool Mixer::getAudioInfo(oss_audioinfo &info) {
-	return ioctl(m_handle, SNDCTL_AUDIOINFO, &info) >= 0;
+	return OK(ioctl, get(), SNDCTL_AUDIOINFO, &info);
 }
 
 bool Mixer::getSysInfo(oss_sysinfo &info) {
-	return ioctl(m_handle, SNDCTL_SYSINFO, &info) >= 0;
+	return OK(ioctl, get(), SNDCTL_SYSINFO, &info);
 }

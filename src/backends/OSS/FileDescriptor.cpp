@@ -5,16 +5,19 @@
 
 #include "FileDescriptor.hpp"
 
+#include "ErrorCheck.hpp"
+
 #include <utility>
 
+#include <fcntl.h>
 #include <unistd.h>
 
 using namespace oss;
 
-FileDescriptor::FileDescriptor() : m_handle(-1) {
+FileDescriptor::FileDescriptor() : m_handle(INVALID_HANDLE) {
 }
 
-FileDescriptor::FileDescriptor(FileDescriptor &&fd) : m_handle(std::exchange(fd.m_handle, -1)) {
+FileDescriptor::FileDescriptor(FileDescriptor &&fd) : m_handle(std::exchange(fd.m_handle, INVALID_HANDLE)) {
 }
 
 FileDescriptor::FileDescriptor(const fd_t handle) : m_handle(handle) {
@@ -25,13 +28,26 @@ FileDescriptor::~FileDescriptor() {
 }
 
 FileDescriptor &FileDescriptor::operator=(FileDescriptor &&fd) {
-	m_handle = std::exchange(fd.m_handle, -1);
+	m_handle = std::exchange(fd.m_handle, INVALID_HANDLE);
 	return *this;
+}
+
+bool FileDescriptor::open(const std::string_view path, const int mode) {
+	if (*this) {
+		close();
+	}
+
+	if (m_handle = ::open(path.data(), mode, 0); m_handle == INVALID_HANDLE) {
+		printFuncError("open", errno);
+		return false;
+	}
+
+	return true;
 }
 
 void FileDescriptor::close() {
 	if (*this) {
 		::close(m_handle);
-		m_handle = -1;
+		m_handle = INVALID_HANDLE;
 	}
 }

@@ -6,6 +6,8 @@
 #ifndef CROSSAUDIO_SRC_BACKENDS_OSS_FILEDESCRIPTOR_HPP
 #define CROSSAUDIO_SRC_BACKENDS_OSS_FILEDESCRIPTOR_HPP
 
+#include <string_view>
+
 namespace oss {
 class FileDescriptor {
 public:
@@ -16,15 +18,18 @@ public:
 	FileDescriptor(fd_t handle);
 	~FileDescriptor();
 
-	constexpr explicit operator bool() const { return m_handle >= 0; }
+	constexpr explicit operator bool() const { return m_handle != INVALID_HANDLE; }
 
 	FileDescriptor &operator=(FileDescriptor &&fd);
 
 	constexpr fd_t get() const { return m_handle; }
 
+	bool open(std::string_view path, int mode);
 	void close();
 
-protected:
+private:
+	static constexpr fd_t INVALID_HANDLE = -1;
+
 	fd_t m_handle;
 };
 } // namespace oss

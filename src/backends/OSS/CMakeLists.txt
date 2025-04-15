@@ -24,6 +24,7 @@ target_compile_definitions(be_oss
 
 target_include_directories(be_oss
 	PRIVATE
+		${BACKENDS_DIR}
 		${SRC_DIR}
 		${INCLUDE_DIR}
 )
@@ -42,6 +43,8 @@ target_sources(be_oss
 
 		"Engine.cpp"
 		"Engine.hpp"
+
+		"ErrorCheck.hpp"
 
 		"Flux.cpp"
 		"Flux.hpp"

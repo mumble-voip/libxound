@@ -5,6 +5,8 @@
 
 #include "Flux.hpp"
 
+#include "ErrorCheck.hpp"
+
 #include <bit>
 #include <cstddef>
 #include <cstdint>
@@ -58,25 +60,29 @@ ErrorCode Flux::start(FluxConfig &config, const FluxFeedback &feedback) {
 	}
 
 	if (config.node && strcmp(config.node, CROSSAUDIO_FLUX_DEFAULT_NODE) != 0) {
-		m_fd = open(config.node, openMode, 0);
+		m_fd.open(config.node, openMode);
 	} else {
-		m_fd = open(DEFAULT_NODE, openMode, 0);
+		m_fd.open(DEFAULT_NODE, openMode);
+	}
+
+	if (!m_fd) {
+		return CROSSAUDIO_EC_GENERIC;
 	}
 
 	int value = translateFormat(config.bitFormat, config.sampleBits);
-	if (ioctl(m_fd.get(), SNDCTL_DSP_SETFMT, &value) < 0) {
+	if (!OK(ioctl, m_fd.get(), SNDCTL_DSP_SETFMT, &value)) {
 		stop();
 		return CROSSAUDIO_EC_GENERIC;
 	}
 
 	value = config.channels;
-	if (ioctl(m_fd.get(), SNDCTL_DSP_CHANNELS, &value) < 0) {
+	if (!OK(ioctl, m_fd.get(), SNDCTL_DSP_CHANNELS, &value)) {
 		stop();
 		return CROSSAUDIO_EC_GENERIC;
 	}
 
 	value = config.sampleRate;
-	if (ioctl(m_fd.get(), SNDCTL_DSP_SPEED, &value) < 0) {
+	if (!OK(ioctl, m_fd.get(), SNDCTL_DSP_SPEED, &value)) {
 		stop();
 		return CROSSAUDIO_EC_GENERIC;
 	}
@@ -142,7 +148,7 @@ void Flux::processInput() {
 		}
 	}
 
-	ioctl(m_fd.get(), SNDCTL_DSP_HALT_INPUT, 0);
+	OK(ioctl, m_fd.get(), SNDCTL_DSP_HALT_INPUT, 0);
 }
 
 void Flux::processOutput() {
@@ -160,13 +166,13 @@ void Flux::processOutput() {
 		}
 
 		if (m_pause.test()) {
-			ioctl(m_fd.get(), SNDCTL_DSP_SILENCE, 0);
+			OK(ioctl, m_fd.get(), SNDCTL_DSP_SILENCE, 0);
 			m_pause.wait(true);
-			ioctl(m_fd.get(), SNDCTL_DSP_SKIP, 0);
+			OK(ioctl, m_fd.get(), SNDCTL_DSP_SKIP, 0);
 		}
 	}
 
-	ioctl(m_fd.get(), SNDCTL_DSP_HALT_OUTPUT, 0);
+	OK(ioctl, m_fd.get(), SNDCTL_DSP_HALT_OUTPUT, 0);
 }
 
 constexpr int Flux::translateFormat(const CrossAudio_BitFormat format, const uint8_t sampleBits) {
